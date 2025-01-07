@@ -1,0 +1,16 @@
+[gd_scene load_steps=3 format=3 uid="uid://lasbhi3kt474"]
+
+[ext_resource type="Texture2D" uid="uid://bt7bsduen8vax" path="res://sprites/hidden.png" id="1_fwujc"]
+[ext_resource type="Script" path="res://scripts/tile.gd" id="2_mevaj"]
+
+[node name="Tile" type="TextureButton"]
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+pivot_offset = Vector2(16, 16)
+focus_mode = 1
+texture_normal = ExtResource("1_fwujc")
+script = ExtResource("2_mevaj")
+
+[connection signal="gui_input" from="." to="." method="_on_gui_input"]
