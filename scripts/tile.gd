@@ -17,6 +17,9 @@ var mines_nearby: int = 0
 # used for checking whether the tile is clickable
 var is_hidden: bool = true
 
+# used to check if the tile is flagged
+var is_flagged: bool = false
+
 # emit the virtual position along with the mouse button that was pressed
 # ensure that the tile is hidden, otherwise it shouldn't be clickable
 func _on_gui_input(event: InputEvent) -> void:

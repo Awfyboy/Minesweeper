@@ -12,6 +12,7 @@ config_version=5
 
 config/name="Minesweeper"
 config/tags=PackedStringArray("learning")
+run/main_scene="res://scenes/game.tscn"
 config/features=PackedStringArray("4.3", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -24,7 +25,6 @@ SignalBus="*res://scripts/signal_bus.gd"
 window/size/viewport_width=1280
 window/size/viewport_height=800
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
 
 [rendering]
 

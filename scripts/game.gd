@@ -19,17 +19,33 @@ const FLAG = preload("res://sprites/flag.png")
 const HIDDEN = preload("res://sprites/hidden.png")
 const SAFE = preload("res://sprites/safe.png")
 
+# node references
+@onready var mine_counter: Label = $Control/MineCounter
+@onready var time_elapsed: Label = $Control/TimeElapsed
+@onready var message: Label = $Control/Message
+@onready var timer: Timer = $Timer
+
 # game related values
 const TILE = preload("res://scenes/tile.tscn")
 const GRID_SIZE: int = 32
 
-var total_rows: int = 11
-var total_columns: int = 12
-var total_mines: int = 10
-var is_first_click: bool = true
+@export var total_rows: int = 12
+@export var total_columns: int = 8
+@export var total_mines: int = 20
 
 # I'm using a 1D array (which is harder honestly) but you may adapt this to a 2D array
 var grid: Array[Tile] = []
+
+var is_first_click: bool = true
+var can_click: bool = true
+var minutes: int = 0
+var seconds: int = 0
+
+# used for user flagging tiles
+var mine_guesses: int = 0:
+	set(value):
+		mine_guesses = value
+		update_mine_counter()
 
 
 # return the size of the viewport
@@ -56,10 +72,27 @@ func add_tile(pos: Vector2, virtual_pos: int, row: int, column: int) -> void:
 	grid.append(tile_instance)
 
 
-# clear the grid
-func reset_grid() -> void:
-	## set first click to true so mines can be assigned on first click
+# update the time elapsed counter
+func update_time() -> void:
+	time_elapsed.text = "Time: %02d:%02d" % [minutes, seconds]
+
+
+# update mine counter
+func update_mine_counter() -> void:
+	mine_counter.text = "Mines: %s" % mine_guesses
+
+
+# clear the grid and create new game
+func reset_game() -> void:
+	## reset default values
 	is_first_click = true
+	can_click = true
+	minutes = 0
+	seconds = 0
+	mine_guesses = total_mines
+	message.hide()
+	update_time()
+	timer.start()
 	
 	## ensure that the grid isn't already empty before clearing
 	if grid.size() > 0:
@@ -72,7 +105,7 @@ func reset_grid() -> void:
 # create tiles inside of the grid
 func generate_tiles(rows: int, columns: int, mines: int) -> void:
 	## first, reset any existing grid
-	reset_grid()
+	reset_game()
 	
 	## add tiles to the root node and grid
 	## the tile scenes are treated like abstract objects
@@ -105,13 +138,19 @@ func assign_tiles(rows: int, columns: int, mines: int, first_tile: Tile) -> void
 	var grid_copy = grid.duplicate(true)
 	grid_copy.shuffle()
 	
-	## remove the first tile clicked from the grid_copy
+	## remove the first tile and nearby tiles clicked from the grid_copy
+	## these tiles won't be selected as mines
 	if is_first_click:
+		first_tile.state = states.SAFE
 		grid_copy.erase(first_tile)
-		print(grid_copy)
+		
+		var nearby_tiles: Array[Tile] = get_nearby_tiles(first_tile, total_rows, total_columns)
+		for nearby_tile in nearby_tiles:
+			grid_copy.erase(nearby_tile)
 	
-	## prevent mine count from being greater than the number of tiles or less than 0
-	var mine_count: int = clamp(mines, 0, (rows * columns))
+	## prevent mine count from being greater than the maximum tiles or less than 0
+	## there should at least be nine tiles that is safe, so max is total tiles - 9
+	var mine_count: int = clamp(mines, 0, (rows * columns) - 9)
 	
 	## assign some tiles as mines
 	for i in range(mine_count):
@@ -195,16 +234,24 @@ func reveal_tile(tile: Tile) -> void:
 	## after reveal, the tile shouldn't be clickable
 	tile.is_hidden = false
 	
-	## update texture based on its state
+	## update texture and do actions based on its state
 	match tile.state:
 		states.SAFE:
 			tile.texture_normal = SAFE
+		
+		## if this is a mine tile, end the game and reveal all mines
 		states.MINE:
+			reveal_mines()
+			timer.stop()
+			message.show()
+			message.text = "You Lost!"
+			can_click = false
 			tile.texture_normal = MINE_SELECTED
+		
+		## if this is a caution tile, check the number of bombs nearby
+		## you can probably just check the integer and get the texture using a string
+		## I did it this way since I preload my textures anyways
 		states.CAUTION:
-			## if this is a caution tile, check the number of bombs nearby
-			## you can probably just check the integer and get the texture using a string
-			## I did it this way since I preload my textures anyways
 			match tile.mines_nearby:
 				1:
 					tile.texture_normal = CAUTION_1
@@ -231,21 +278,20 @@ func reveal_nearby_tiles(tile: Tile) -> void:
 	## reveal the pressed tile
 	reveal_tile(tile)
 	
-	## if the tile is a caution tile, stop recursion
+	## if the tile is a mine tile or caution tile, stop recursion
 	if tile.state == states.CAUTION or tile.state == states.MINE:
 		return
 	
 	## otherwise, this tile is a safe tile
-	## get the row and column of this tile based on virtual position
-	var row: int = tile.row
-	var column: int = tile.column
-	
 	## get nearby tiles
 	var nearby_tiles: Array[Tile] = get_nearby_tiles(tile, total_rows, total_columns)
 	
 	## for each nearby tile that is hidden, recurse this function for that tile
 	for nearby_tile in nearby_tiles:
 		if nearby_tile.is_hidden == true:
+			## if the tile was flagged, update the mine guess counter
+			if nearby_tile.is_flagged:
+				mine_guesses += 1
 			reveal_nearby_tiles(nearby_tile)
 
 
@@ -257,19 +303,28 @@ func reveal_mines() -> void:
 			tile.is_hidden = false
 
 
-# DEBUG: reveal all tiles on the grid
-func reveal_all_tiles() -> void:
+# check if the user has won
+# this is done by checking if the remaining tiles are all mines
+func check_win() -> bool:
+	## get the remaining tiles
+	var remaining_tiles: int = 0
 	for tile in grid:
-		reveal_tile(tile)
+		if tile.is_hidden:
+			remaining_tiles += 1
+	
+	## check if the remaining tiles and total mines are equal
+	if remaining_tiles == total_mines:
+		return true
+	return false
 
 
 # initialize new game at the start of program
 func _ready() -> void:
-	## connect to signals from the SignalBus
+	## connect to tile pressed signal from the SignalBus
 	SignalBus.tile_pressed.connect(on_tile_pressed)
 	
-	## start a new game
-	generate_tiles(total_rows, total_columns, total_mines)
+	## start a new easy game
+	_on_easy_pressed()
 
 
 # call when a tile is pressed
@@ -277,26 +332,71 @@ func on_tile_pressed(virtual_pos: int, mouse_button: int) -> void:
 	## get the tile that was just pressed
 	var tile: Tile = grid[virtual_pos]
 	
-	## if right clicked, toggle the tile flagging
-	if mouse_button == MOUSE_BUTTON_RIGHT:
-		if tile.texture_normal == HIDDEN:
-			tile.texture_normal = FLAG
-		else:
-			tile.texture_normal = HIDDEN
-	
-	## if left clicked, reveal the tile
-	## ensure tile isn't flagged
-	elif mouse_button == MOUSE_BUTTON_LEFT and tile.texture_normal == HIDDEN:
-		## if it is the first click, start assigning mines to the tiles
-		## it is done here to ensure that the user's first click will never be a mine
-		if is_first_click:
-			assign_tiles(total_rows, total_columns, total_mines, tile)
-			is_first_click = false
+	## check if the user can click
+	if can_click:
+		## if right clicked, toggle the tile flagging
+		if mouse_button == MOUSE_BUTTON_RIGHT:
+			if tile.texture_normal == HIDDEN:
+				tile.texture_normal = FLAG
+				tile.is_flagged = true
+				mine_guesses -= 1
+			else:
+				tile.texture_normal = HIDDEN
+				tile.is_flagged = false
+				mine_guesses += 1
 		
-		## reveal this tile and any nearby tiles that are safe
-		## repeat until it reaches a caution tile
-		reveal_nearby_tiles(tile)
+		## if left clicked, reveal the tile
+		## ensure tile isn't flagged and the user can press tiles
+		elif mouse_button == MOUSE_BUTTON_LEFT and not tile.is_flagged:
+			## if it is the first click, start assigning mines to the tiles
+			## it is done here to ensure that the user's first click will never be a mine
+			if is_first_click:
+				assign_tiles(total_rows, total_columns, total_mines, tile)
+				is_first_click = false
+			
+			## reveal this tile and any nearby tiles that are safe
+			## repeat until it reaches a caution tile
+			reveal_nearby_tiles(tile)
+			
+			## check if the user has won
+			if check_win():
+				## flag the remaining tiles
+				for mine_tile in grid:
+					if mine_tile.is_hidden:
+						mine_tile.texture_normal = FLAG
+						mine_tile.is_flagged = true
+				
+				mine_guesses = 0
+				message.show()
+				message.text = "You Won!"
+				timer.stop()
+				can_click = false
 
 
-func _on_button_pressed() -> void:
+func _on_timer_timeout() -> void:
+	seconds += 1
+	if seconds > 60:
+		minutes += 1
+		seconds = 0
+	update_time()
+
+
+func _on_easy_pressed() -> void:
+	total_rows = 10
+	total_columns = 10
+	total_mines = 12
+	generate_tiles(total_rows, total_columns, total_mines)
+
+
+func _on_normal_pressed() -> void:
+	total_rows = 16
+	total_columns = 12
+	total_mines = 30
+	generate_tiles(total_rows, total_columns, total_mines)
+
+
+func _on_hard_pressed() -> void:
+	total_rows = 18
+	total_columns = 16
+	total_mines = 40
 	generate_tiles(total_rows, total_columns, total_mines)

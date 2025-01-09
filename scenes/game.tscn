@@ -1,10 +1,22 @@
-[gd_scene load_steps=3 format=3 uid="uid://6buicxxj4a1p"]
+[gd_scene load_steps=6 format=3 uid="uid://6buicxxj4a1p"]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_m35v1"]
 [ext_resource type="Texture2D" uid="uid://bhmw0xln525oi" path="res://sprites/grid_helper.png" id="2_njgpx"]
 
+[sub_resource type="LabelSettings" id="LabelSettings_xgd6b"]
+font_size = 24
+
+[sub_resource type="LabelSettings" id="LabelSettings_d4yan"]
+font_size = 32
+
+[sub_resource type="LabelSettings" id="LabelSettings_b1gra"]
+font_size = 18
+
 [node name="Game" type="Node"]
 script = ExtResource("1_m35v1")
+total_rows = 20
+total_columns = 16
+total_mines = 40
 
 [node name="GridHelper" type="TextureRect" parent="."]
 visible = false
@@ -18,6 +30,7 @@ grow_vertical = 2
 texture = ExtResource("2_njgpx")
 
 [node name="Control" type="Control" parent="."]
+z_index = 2
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -25,13 +38,139 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="Button" type="Button" parent="Control"]
+[node name="Easy" type="Button" parent="Control"]
+layout_mode = 0
+offset_left = 1072.0
+offset_top = 544.0
+offset_right = 1232.0
+offset_bottom = 592.0
+focus_mode = 1
+theme_override_font_sizes/font_size = 18
+text = "Easy"
+
+[node name="Normal" type="Button" parent="Control"]
+layout_mode = 0
+offset_left = 1072.0
+offset_top = 624.0
+offset_right = 1232.0
+offset_bottom = 672.0
+focus_mode = 1
+theme_override_font_sizes/font_size = 18
+text = "Normal"
+
+[node name="Hard" type="Button" parent="Control"]
+layout_mode = 0
+offset_left = 1072.0
+offset_top = 704.0
+offset_right = 1232.0
+offset_bottom = 752.0
+focus_mode = 1
+theme_override_font_sizes/font_size = 18
+text = "Hard"
+
+[node name="Hard2" type="Button" parent="Control"]
 layout_mode = 0
 offset_left = 48.0
 offset_top = 688.0
-offset_right = 240.0
+offset_right = 224.0
 offset_bottom = 752.0
 focus_mode = 1
-text = "Generate tiles"
+theme_override_font_sizes/font_size = 18
+text = "Custom game"
 
-[connection signal="pressed" from="Control/Button" to="." method="_on_button_pressed"]
+[node name="MineCounter" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 48.0
+offset_right = 224.0
+offset_bottom = 82.0
+text = "MINES: 999999"
+label_settings = SubResource("LabelSettings_xgd6b")
+
+[node name="TimeElapsed" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 96.0
+offset_right = 224.0
+offset_bottom = 130.0
+text = "TIME: 999:99"
+label_settings = SubResource("LabelSettings_xgd6b")
+
+[node name="Message" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 192.0
+offset_right = 224.0
+offset_bottom = 237.0
+text = "MESSAGE"
+label_settings = SubResource("LabelSettings_d4yan")
+
+[node name="RowCounter" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 432.0
+offset_right = 224.0
+offset_bottom = 466.0
+text = "Rows: 999"
+label_settings = SubResource("LabelSettings_b1gra")
+
+[node name="ColumnCounter" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 512.0
+offset_right = 224.0
+offset_bottom = 546.0
+text = "Columns: 999"
+label_settings = SubResource("LabelSettings_b1gra")
+
+[node name="MineCounter2" type="Label" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 592.0
+offset_right = 224.0
+offset_bottom = 626.0
+text = "Mines: 999"
+label_settings = SubResource("LabelSettings_b1gra")
+
+[node name="RowSlider" type="HSlider" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 464.0
+offset_right = 224.0
+offset_bottom = 480.0
+theme_override_constants/center_grabber = -1
+min_value = 4.0
+max_value = 30.0
+value = 4.0
+scrollable = false
+
+[node name="ColumnSlider" type="HSlider" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 544.0
+offset_right = 224.0
+offset_bottom = 560.0
+theme_override_constants/center_grabber = -1
+min_value = 4.0
+max_value = 30.0
+value = 4.0
+scrollable = false
+
+[node name="MineSlider" type="HSlider" parent="Control"]
+layout_mode = 0
+offset_left = 48.0
+offset_top = 624.0
+offset_right = 224.0
+offset_bottom = 640.0
+theme_override_constants/center_grabber = -1
+min_value = 5.0
+value = 5.0
+scrollable = false
+
+[node name="Timer" type="Timer" parent="."]
+
+[connection signal="pressed" from="Control/Easy" to="." method="_on_easy_pressed"]
+[connection signal="pressed" from="Control/Normal" to="." method="_on_normal_pressed"]
+[connection signal="pressed" from="Control/Hard" to="." method="_on_hard_pressed"]
+[connection signal="pressed" from="Control/Hard2" to="." method="_on_hard_pressed"]
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
