@@ -25,7 +25,14 @@ const GRID_SIZE: int = 32
 
 var test_rows: int = 5
 var test_columns: int = 8
-var grid: Array = []
+
+# I'm using a 1D array (which is harder honestly) but you may adapt this to a 2D array
+var grid: Array[Tile] = []
+
+
+# return the size of the viewport
+func get_viewport_size() -> Vector2:
+	return get_viewport().get_visible_rect().size
 
 
 # add a tile scene onto the given position and set a virtual position
@@ -35,7 +42,7 @@ func add_tile(pos: Vector2, virtual_pos: int) -> void:
 	var tile_instance: Tile = TILE.instantiate()
 	add_child(tile_instance)
 	
-	## set its position, virtual position, state and texture 
+	## set its position, virtual position, and texture 
 	tile_instance.position = pos
 	tile_instance.virtual_pos = virtual_pos
 	tile_instance.texture_normal = HIDDEN
@@ -92,12 +99,74 @@ func generate_tiles(rows: int, columns: int, mines: int) -> void:
 	for i in range(mine_count):
 		var tile: Tile = grid_copy.pop_back()
 		tile.state = states.MINE
-		
+	
+	## update grid to have caution tiles
+	## tiles with mines next to them should be a caution tile
+	## update 'mine_nearby' for each mine next to the tile
+	for y in range(rows):
+		for x in range(columns):
+			## get current tile of this loop
+			var tile: Tile = grid[x + (y * columns)]
+			
+			## if this tile is a mine, ignore it and immediately skip to the next iteration
+			if tile.state == states.MINE:
+				continue
+			
+			## get the tiles nearby this tile
+			var nearby_tiles: Array[Tile] = get_nearby_tiles(y, x, rows, columns)
+			
+			## if a nearby tile is a mine, increment 'mines_nearby' and set state to caution
+			for nearby_tile in nearby_tiles:
+				if nearby_tile.state == states.MINE:
+					tile.state = states.CAUTION
+					tile.mines_nearby += 1
 
 
-# return the size of the viewport
-func get_viewport_size() -> Vector2:
-	return get_viewport().get_visible_rect().size
+# get the nearby tiles from the given tile
+# use current row and current column of the given tile to find the nearby tiles
+func get_nearby_tiles(row: int, column: int, total_rows: int, total_columns: int) -> Array[Tile]:
+	#var tile: Tile = grid[tile_index]
+	## append nearby tiles' index to this array
+	var nearby_tiles: Array[Tile] = []
+	
+	## all possible nearby tiles, including out-of-bounds tiles
+	var top_left: int = (column - 1) + ((row - 1) * total_columns)
+	var top: int = column + ((row - 1) * total_columns)
+	var top_right: int = (column + 1) + ((row - 1) * total_columns)
+	var left: int = (column - 1) + (row * total_columns)
+	var right: int = (column + 1) + (row * total_columns)
+	var bottom_left: int = (column - 1) + ((row + 1) * total_columns)
+	var bottom: int = column + ((row + 1) * total_columns)
+	var bottom_right: int = (column + 1) + ((row + 1) * total_columns)
+	
+	## the first and last tiles of each nearby row
+	var left_bound: int = row * total_columns
+	var right_bound: int = (row * total_columns) + total_columns - 1
+	var top_left_bound: int = (row - 1) * total_columns
+	var top_right_bound: int = ((row - 1) * total_columns) + total_columns - 1
+	var bottom_left_bound: int = (row + 1) * total_columns
+	var bottom_right_bound: int = ((row + 1) * total_columns) + total_columns - 1
+	
+	## append tiles that are within bounds of the grid
+	if top_left >= 0 and top_left >= top_left_bound:
+		nearby_tiles.append(grid[top_left])
+	if top >= 0:
+		nearby_tiles.append(grid[top])
+	if top_right >= 0 and top_right <= top_right_bound:
+		nearby_tiles.append(grid[top_right])
+	if left >= 0 and left >= left_bound:
+		nearby_tiles.append(grid[left])
+	if right < (total_rows * total_columns) and right <= right_bound:
+		nearby_tiles.append(grid[right])
+	if bottom_left < (total_rows * total_columns) and bottom_left >= bottom_left_bound:
+		nearby_tiles.append(grid[bottom_left])
+	if bottom < (total_rows * total_columns):
+		nearby_tiles.append(grid[bottom])
+	if bottom_right < (total_rows * total_columns) and bottom_right <= bottom_right_bound:
+		nearby_tiles.append(grid[bottom_right])
+	
+	## return the list of possible nearby tiles
+	return nearby_tiles
 
 
 # reveal the tile selected from the grid
@@ -142,17 +211,28 @@ func reveal_mines() -> void:
 			tile.is_hidden = false
 
 
+# DEBUG: reveal all tiles on the grid
+func reveal_all_tiles() -> void:
+	for tile in grid:
+		reveal_tile(tile)
+
+
 # initialize new game at the start of program
 func _ready() -> void:
 	## connect to signals from the SignalBus
 	SignalBus.tile_pressed.connect(on_tile_pressed)
 	
 	## start a new game
-	generate_tiles(11, 12, 20)
-	reveal_mines()
+	generate_tiles(20, 16, 40)
+	reveal_all_tiles()
 
 
 # call when a tile is pressed
 func on_tile_pressed(virtual_pos: int, mouse_button: int) -> void:
 	var tile: Tile = grid[virtual_pos]
 	tile.queue_free()
+
+
+func _on_button_pressed() -> void:
+	generate_tiles(20, 16, 40)
+	reveal_all_tiles()
