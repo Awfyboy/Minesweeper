@@ -23,8 +23,10 @@ const SAFE = preload("res://sprites/safe.png")
 const TILE = preload("res://scenes/tile.tscn")
 const GRID_SIZE: int = 32
 
-var test_rows: int = 5
-var test_columns: int = 8
+var total_rows: int = 11
+var total_columns: int = 12
+var total_mines: int = 10
+var is_first_click: bool = true
 
 # I'm using a 1D array (which is harder honestly) but you may adapt this to a 2D array
 var grid: Array[Tile] = []
@@ -37,14 +39,17 @@ func get_viewport_size() -> Vector2:
 
 # add a tile scene onto the given position and set a virtual position
 # store their references as elements of the grid
-func add_tile(pos: Vector2, virtual_pos: int) -> void:
+func add_tile(pos: Vector2, virtual_pos: int, row: int, column: int) -> void:
 	## create new instance of a tile and add it to the root node
 	var tile_instance: Tile = TILE.instantiate()
 	add_child(tile_instance)
 	
-	## set its position, virtual position, and texture 
+	## set initial values and states of the tile
 	tile_instance.position = pos
 	tile_instance.virtual_pos = virtual_pos
+	tile_instance.row = row
+	tile_instance.column = column
+	tile_instance.state = states.SAFE
 	tile_instance.texture_normal = HIDDEN
 	
 	## store its reference as an element of the grid
@@ -53,6 +58,9 @@ func add_tile(pos: Vector2, virtual_pos: int) -> void:
 
 # clear the grid
 func reset_grid() -> void:
+	## set first click to true so mines can be assigned on first click
+	is_first_click = true
+	
 	## ensure that the grid isn't already empty before clearing
 	if grid.size() > 0:
 		for i in range(grid.size()):
@@ -84,13 +92,23 @@ func generate_tiles(rows: int, columns: int, mines: int) -> void:
 			## add new tile and set its position and virtual position
 			var tile_pos: Vector2 = Vector2((GRID_SIZE * x) + hor_offset, (GRID_SIZE * y) + ver_offset)
 			var virtual_pos: int = x + (y * columns)
-			add_tile(tile_pos, virtual_pos)
-	
+			add_tile(tile_pos, virtual_pos, y, x)
+
+
+# assign random tiles as mines and nearby tiles as caution tiles
+# this will not be done in tile generation, it will be done on the first tile click
+# this will prevent the user from accidentally selecting a mine on the first click
+func assign_tiles(rows: int, columns: int, mines: int, first_tile: Tile) -> void:
 	## randomly select some tiles to be mines
 	## ensure that no tile can be selected more than once
 	## this is done by creating a copy of the grid, shuffling it, then getting elements from the back
 	var grid_copy = grid.duplicate(true)
 	grid_copy.shuffle()
+	
+	## remove the first tile clicked from the grid_copy
+	if is_first_click:
+		grid_copy.erase(first_tile)
+		print(grid_copy)
 	
 	## prevent mine count from being greater than the number of tiles or less than 0
 	var mine_count: int = clamp(mines, 0, (rows * columns))
@@ -113,7 +131,7 @@ func generate_tiles(rows: int, columns: int, mines: int) -> void:
 				continue
 			
 			## get the tiles nearby this tile
-			var nearby_tiles: Array[Tile] = get_nearby_tiles(y, x, rows, columns)
+			var nearby_tiles: Array[Tile] = get_nearby_tiles(tile, rows, columns)
 			
 			## if a nearby tile is a mine, increment 'mines_nearby' and set state to caution
 			for nearby_tile in nearby_tiles:
@@ -124,8 +142,11 @@ func generate_tiles(rows: int, columns: int, mines: int) -> void:
 
 # get the nearby tiles from the given tile
 # use current row and current column of the given tile to find the nearby tiles
-func get_nearby_tiles(row: int, column: int, total_rows: int, total_columns: int) -> Array[Tile]:
-	#var tile: Tile = grid[tile_index]
+func get_nearby_tiles(tile: Tile, total_rows: int, total_columns: int) -> Array[Tile]:
+	## get row and column of this tile
+	var row: int = tile.row
+	var column: int = tile.column
+	
 	## append nearby tiles' index to this array
 	var nearby_tiles: Array[Tile] = []
 	
@@ -203,6 +224,31 @@ func reveal_tile(tile: Tile) -> void:
 					tile.texture_normal = CAUTION_8
 
 
+# reveal any tiles near this tile
+# if a nearby tile is safe, recurse this function on that tile as well
+# continue recursion until a caution tile is found
+func reveal_nearby_tiles(tile: Tile) -> void:
+	## reveal the pressed tile
+	reveal_tile(tile)
+	
+	## if the tile is a caution tile, stop recursion
+	if tile.state == states.CAUTION or tile.state == states.MINE:
+		return
+	
+	## otherwise, this tile is a safe tile
+	## get the row and column of this tile based on virtual position
+	var row: int = tile.row
+	var column: int = tile.column
+	
+	## get nearby tiles
+	var nearby_tiles: Array[Tile] = get_nearby_tiles(tile, total_rows, total_columns)
+	
+	## for each nearby tile that is hidden, recurse this function for that tile
+	for nearby_tile in nearby_tiles:
+		if nearby_tile.is_hidden == true:
+			reveal_nearby_tiles(nearby_tile)
+
+
 # reveal all the mines in the grid
 func reveal_mines() -> void:
 	for tile in grid:
@@ -223,16 +269,34 @@ func _ready() -> void:
 	SignalBus.tile_pressed.connect(on_tile_pressed)
 	
 	## start a new game
-	generate_tiles(20, 16, 40)
-	reveal_all_tiles()
+	generate_tiles(total_rows, total_columns, total_mines)
 
 
 # call when a tile is pressed
 func on_tile_pressed(virtual_pos: int, mouse_button: int) -> void:
+	## get the tile that was just pressed
 	var tile: Tile = grid[virtual_pos]
-	tile.queue_free()
+	
+	## if right clicked, toggle the tile flagging
+	if mouse_button == MOUSE_BUTTON_RIGHT:
+		if tile.texture_normal == HIDDEN:
+			tile.texture_normal = FLAG
+		else:
+			tile.texture_normal = HIDDEN
+	
+	## if left clicked, reveal the tile
+	## ensure tile isn't flagged
+	elif mouse_button == MOUSE_BUTTON_LEFT and tile.texture_normal == HIDDEN:
+		## if it is the first click, start assigning mines to the tiles
+		## it is done here to ensure that the user's first click will never be a mine
+		if is_first_click:
+			assign_tiles(total_rows, total_columns, total_mines, tile)
+			is_first_click = false
+		
+		## reveal this tile and any nearby tiles that are safe
+		## repeat until it reaches a caution tile
+		reveal_nearby_tiles(tile)
 
 
 func _on_button_pressed() -> void:
-	generate_tiles(20, 16, 40)
-	reveal_all_tiles()
+	generate_tiles(total_rows, total_columns, total_mines)

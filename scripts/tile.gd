@@ -4,6 +4,10 @@ class_name Tile
 # index of the object in the grid array
 var virtual_pos: int = 0
 
+# row and oclumn of this tile on the grid
+var row: int = 0
+var column: int = 0
+
 # state of the tile based on the enum in the Game scene
 var state: int = 0
 
