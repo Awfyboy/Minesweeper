@@ -1,7 +1,6 @@
-[gd_scene load_steps=6 format=3 uid="uid://6buicxxj4a1p"]
+[gd_scene load_steps=5 format=3 uid="uid://6buicxxj4a1p"]
 
 [ext_resource type="Script" path="res://scripts/game.gd" id="1_m35v1"]
-[ext_resource type="Texture2D" uid="uid://bhmw0xln525oi" path="res://sprites/grid_helper.png" id="2_njgpx"]
 
 [sub_resource type="LabelSettings" id="LabelSettings_xgd6b"]
 font_size = 24
@@ -18,16 +17,13 @@ total_rows = 20
 total_columns = 16
 total_mines = 40
 
-[node name="GridHelper" type="TextureRect" parent="."]
-visible = false
-modulate = Color(1, 1, 1, 0.627451)
-z_index = 1
+[node name="ColorRect" type="ColorRect" parent="."]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-texture = ExtResource("2_njgpx")
+color = Color(0.242188, 0.242188, 0.242188, 1)
 
 [node name="Control" type="Control" parent="."]
 z_index = 2
@@ -40,9 +36,9 @@ grow_vertical = 2
 
 [node name="Easy" type="Button" parent="Control"]
 layout_mode = 0
-offset_left = 1072.0
+offset_left = 48.0
 offset_top = 544.0
-offset_right = 1232.0
+offset_right = 208.0
 offset_bottom = 592.0
 focus_mode = 1
 theme_override_font_sizes/font_size = 18
@@ -50,9 +46,9 @@ text = "Easy"
 
 [node name="Normal" type="Button" parent="Control"]
 layout_mode = 0
-offset_left = 1072.0
+offset_left = 48.0
 offset_top = 624.0
-offset_right = 1232.0
+offset_right = 208.0
 offset_bottom = 672.0
 focus_mode = 1
 theme_override_font_sizes/font_size = 18
@@ -60,20 +56,20 @@ text = "Normal"
 
 [node name="Hard" type="Button" parent="Control"]
 layout_mode = 0
-offset_left = 1072.0
+offset_left = 48.0
 offset_top = 704.0
-offset_right = 1232.0
+offset_right = 208.0
 offset_bottom = 752.0
 focus_mode = 1
 theme_override_font_sizes/font_size = 18
 text = "Hard"
 
-[node name="Hard2" type="Button" parent="Control"]
+[node name="CustomGame" type="Button" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 688.0
-offset_right = 224.0
-offset_bottom = 752.0
+offset_left = 1072.0
+offset_top = 704.0
+offset_right = 1248.0
+offset_bottom = 768.0
 focus_mode = 1
 theme_override_font_sizes/font_size = 18
 text = "Custom game"
@@ -107,61 +103,61 @@ label_settings = SubResource("LabelSettings_d4yan")
 
 [node name="RowCounter" type="Label" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 432.0
-offset_right = 224.0
-offset_bottom = 466.0
+offset_left = 1072.0
+offset_top = 448.0
+offset_right = 1248.0
+offset_bottom = 482.0
 text = "Rows: 999"
 label_settings = SubResource("LabelSettings_b1gra")
 
 [node name="ColumnCounter" type="Label" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 512.0
-offset_right = 224.0
-offset_bottom = 546.0
+offset_left = 1072.0
+offset_top = 528.0
+offset_right = 1248.0
+offset_bottom = 562.0
 text = "Columns: 999"
 label_settings = SubResource("LabelSettings_b1gra")
 
 [node name="MineCounter2" type="Label" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 592.0
-offset_right = 224.0
-offset_bottom = 626.0
+offset_left = 1072.0
+offset_top = 608.0
+offset_right = 1248.0
+offset_bottom = 642.0
 text = "Mines: 999"
 label_settings = SubResource("LabelSettings_b1gra")
 
 [node name="RowSlider" type="HSlider" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 464.0
-offset_right = 224.0
-offset_bottom = 480.0
+offset_left = 1072.0
+offset_top = 480.0
+offset_right = 1248.0
+offset_bottom = 496.0
 theme_override_constants/center_grabber = -1
 min_value = 4.0
-max_value = 30.0
+max_value = 24.0
 value = 4.0
 scrollable = false
 
 [node name="ColumnSlider" type="HSlider" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 544.0
-offset_right = 224.0
-offset_bottom = 560.0
+offset_left = 1072.0
+offset_top = 560.0
+offset_right = 1248.0
+offset_bottom = 576.0
 theme_override_constants/center_grabber = -1
 min_value = 4.0
-max_value = 30.0
+max_value = 24.0
 value = 4.0
 scrollable = false
 
 [node name="MineSlider" type="HSlider" parent="Control"]
 layout_mode = 0
-offset_left = 48.0
-offset_top = 624.0
-offset_right = 224.0
-offset_bottom = 640.0
+offset_left = 1072.0
+offset_top = 640.0
+offset_right = 1248.0
+offset_bottom = 656.0
 theme_override_constants/center_grabber = -1
 min_value = 5.0
 value = 5.0
@@ -172,5 +168,8 @@ scrollable = false
 [connection signal="pressed" from="Control/Easy" to="." method="_on_easy_pressed"]
 [connection signal="pressed" from="Control/Normal" to="." method="_on_normal_pressed"]
 [connection signal="pressed" from="Control/Hard" to="." method="_on_hard_pressed"]
-[connection signal="pressed" from="Control/Hard2" to="." method="_on_hard_pressed"]
+[connection signal="pressed" from="Control/CustomGame" to="." method="_on_custom_game_pressed"]
+[connection signal="value_changed" from="Control/RowSlider" to="." method="_on_row_slider_value_changed"]
+[connection signal="value_changed" from="Control/ColumnSlider" to="." method="_on_column_slider_value_changed"]
+[connection signal="value_changed" from="Control/MineSlider" to="." method="_on_mine_slider_value_changed"]
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

@@ -24,6 +24,12 @@ const SAFE = preload("res://sprites/safe.png")
 @onready var time_elapsed: Label = $Control/TimeElapsed
 @onready var message: Label = $Control/Message
 @onready var timer: Timer = $Timer
+@onready var row_counter: Label = $Control/RowCounter
+@onready var column_counter: Label = $Control/ColumnCounter
+@onready var mine_counter_2: Label = $Control/MineCounter2
+@onready var row_slider: HSlider = $Control/RowSlider
+@onready var column_slider: HSlider = $Control/ColumnSlider
+@onready var mine_slider: HSlider = $Control/MineSlider
 
 # game related values
 const TILE = preload("res://scenes/tile.tscn")
@@ -82,6 +88,21 @@ func update_mine_counter() -> void:
 	mine_counter.text = "Mines: %s" % mine_guesses
 
 
+# update custom game's row counter
+func update_row_custom_counter(value: int) -> void:
+	row_counter.text = "Rows: %s" % value
+
+
+# update custom game's column counter
+func update_column_custom_counter(value: int) -> void:
+	column_counter.text = "Columns: %s" % value
+
+
+# update custom game's row counter
+func update_mine_custom_counter(value: int) -> void:
+	mine_counter_2.text = "Mines: %s" % value
+
+
 # clear the grid and create new game
 func reset_game() -> void:
 	## reset default values
@@ -138,7 +159,7 @@ func assign_tiles(rows: int, columns: int, mines: int, first_tile: Tile) -> void
 	var grid_copy = grid.duplicate(true)
 	grid_copy.shuffle()
 	
-	## remove the first tile and nearby tiles clicked from the grid_copy
+	## remove the first tile clicked and its nearby tiles from the grid_copy
 	## these tiles won't be selected as mines
 	if is_first_click:
 		first_tile.state = states.SAFE
@@ -149,7 +170,7 @@ func assign_tiles(rows: int, columns: int, mines: int, first_tile: Tile) -> void
 			grid_copy.erase(nearby_tile)
 	
 	## prevent mine count from being greater than the maximum tiles or less than 0
-	## there should at least be nine tiles that is safe, so max is total tiles - 9
+	## there should at least be nine tiles that are not mines, so max is total tiles - 9
 	var mine_count: int = clamp(mines, 0, (rows * columns) - 9)
 	
 	## assign some tiles as mines
@@ -323,6 +344,14 @@ func _ready() -> void:
 	## connect to tile pressed signal from the SignalBus
 	SignalBus.tile_pressed.connect(on_tile_pressed)
 	
+	## set custom game sliders to some default values
+	row_slider.value = 11
+	column_slider.value = 12
+	mine_slider.value = 20
+	update_row_custom_counter(row_slider.value)
+	update_column_custom_counter(column_slider.value)
+	update_mine_custom_counter(mine_slider.value)
+	
 	## start a new easy game
 	_on_easy_pressed()
 
@@ -391,7 +420,7 @@ func _on_easy_pressed() -> void:
 func _on_normal_pressed() -> void:
 	total_rows = 16
 	total_columns = 12
-	total_mines = 30
+	total_mines = 25
 	generate_tiles(total_rows, total_columns, total_mines)
 
 
@@ -400,3 +429,22 @@ func _on_hard_pressed() -> void:
 	total_columns = 16
 	total_mines = 40
 	generate_tiles(total_rows, total_columns, total_mines)
+
+
+func _on_custom_game_pressed() -> void:
+	total_rows = row_slider.value
+	total_columns = column_slider.value
+	total_mines = mine_slider.value
+	generate_tiles(total_rows, total_columns, total_mines)
+
+
+func _on_row_slider_value_changed(value: float) -> void:
+	update_row_custom_counter(value)
+
+
+func _on_column_slider_value_changed(value: float) -> void:
+	update_column_custom_counter(value)
+
+
+func _on_mine_slider_value_changed(value: float) -> void:
+	update_mine_custom_counter(value)
