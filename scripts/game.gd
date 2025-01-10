@@ -48,10 +48,7 @@ var minutes: int = 0
 var seconds: int = 0
 
 # used for user flagging tiles
-var mine_guesses: int = 0:
-	set(value):
-		mine_guesses = value
-		update_mine_counter()
+var mine_guesses: int = 0
 
 
 # return the size of the viewport
@@ -84,8 +81,14 @@ func update_time() -> void:
 
 
 # update mine counter
-func update_mine_counter() -> void:
-	mine_counter.text = "Mines: %s" % mine_guesses
+func update_mine_guess_counter() -> void:
+	## if it is the first click, make the amount of mines hidden
+	## this is done because, mines are generated only after the first click
+	## so edge cases like mines > total tiles need to be checked
+	if is_first_click:
+		mine_counter.text = "Mines: ???"
+	else:
+		mine_counter.text = "Mines: %s" % mine_guesses
 
 
 # update custom game's row counter
@@ -110,7 +113,8 @@ func reset_game() -> void:
 	can_click = true
 	minutes = 0
 	seconds = 0
-	mine_guesses = total_mines
+	mine_guesses = 0
+	update_mine_guess_counter()
 	message.hide()
 	update_time()
 	timer.start()
@@ -161,17 +165,21 @@ func assign_tiles(rows: int, columns: int, mines: int, first_tile: Tile) -> void
 	
 	## remove the first tile clicked and its nearby tiles from the grid_copy
 	## these tiles won't be selected as mines
-	if is_first_click:
-		first_tile.state = states.SAFE
-		grid_copy.erase(first_tile)
-		
-		var nearby_tiles: Array[Tile] = get_nearby_tiles(first_tile, total_rows, total_columns)
-		for nearby_tile in nearby_tiles:
-			grid_copy.erase(nearby_tile)
+	first_tile.state = states.SAFE
+	grid_copy.erase(first_tile)
+	
+	var nearby_tiles_before: Array[Tile] = get_nearby_tiles(first_tile, total_rows, total_columns)
+	for nearby_tile in nearby_tiles_before:
+		grid_copy.erase(nearby_tile)
 	
 	## prevent mine count from being greater than the maximum tiles or less than 0
 	## there should at least be nine tiles that are not mines, so max is total tiles - 9
 	var mine_count: int = clamp(mines, 0, (rows * columns) - 9)
+	
+	## update mine_guesses and total mines to ensure they match
+	## mine guesses is added here because the user may have flagged a tile before mine assignment
+	mine_guesses += mine_count
+	total_mines = mine_count
 	
 	## assign some tiles as mines
 	for i in range(mine_count):
@@ -191,10 +199,10 @@ func assign_tiles(rows: int, columns: int, mines: int, first_tile: Tile) -> void
 				continue
 			
 			## get the tiles nearby this tile
-			var nearby_tiles: Array[Tile] = get_nearby_tiles(tile, rows, columns)
+			var nearby_tiles_after: Array[Tile] = get_nearby_tiles(tile, rows, columns)
 			
 			## if a nearby tile is a mine, increment 'mines_nearby' and set state to caution
-			for nearby_tile in nearby_tiles:
+			for nearby_tile in nearby_tiles_after:
 				if nearby_tile.state == states.MINE:
 					tile.state = states.CAUTION
 					tile.mines_nearby += 1
@@ -373,6 +381,9 @@ func on_tile_pressed(virtual_pos: int, mouse_button: int) -> void:
 				tile.texture_normal = HIDDEN
 				tile.is_flagged = false
 				mine_guesses += 1
+			
+			## update the mine guess counter so it reflets the amount of flags
+			update_mine_guess_counter()
 		
 		## if left clicked, reveal the tile
 		## ensure tile isn't flagged and the user can press tiles
@@ -386,6 +397,9 @@ func on_tile_pressed(virtual_pos: int, mouse_button: int) -> void:
 			## reveal this tile and any nearby tiles that are safe
 			## repeat until it reaches a caution tile
 			reveal_nearby_tiles(tile)
+			
+			## update the mine guess counter after a tile is pressed
+			update_mine_guess_counter()
 			
 			## check if the user has won
 			if check_win():
